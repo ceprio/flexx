@@ -281,5 +281,5 @@ class LeafletExample(flx.Widget):
 
 
 if __name__ == '__main__':
-    flx.launch(LeafletExample, 'firefox')
+    flx.launch(LeafletExample, 'default-browser')
     flx.run()

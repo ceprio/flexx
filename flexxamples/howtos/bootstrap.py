@@ -83,5 +83,5 @@ class Example(flx.Widget):
 
 
 if __name__ == '__main__':
-    m = flx.launch(Example, 'firefox-browser')
+    m = flx.launch(Example, 'default-browser')
     flx.run()

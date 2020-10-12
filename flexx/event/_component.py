@@ -203,7 +203,7 @@ class Component(with_metaclass(ComponentMeta, object)):
         for name in self.__properties__:
             self.__handlers.setdefault(name, [])
 
-        # With self as the active component (and thus mutatable), init the
+        # With self as the active component (and thus mutable), init the
         # values of all properties, and apply user-defined initialization
         with self:
             self._comp_init_property_values(property_values)

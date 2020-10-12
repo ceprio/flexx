@@ -1,33 +1,48 @@
 """
-Provides the base ``Widget`` and ``PyWidget`` classes.
+Provides the base ``Element`` and ``PyElement`` classes.
 
-When subclassing a Widget to create a compound widget (i.e. a widget
-that contains other widgets), initialize the child widgets inside the
-``init()`` method. That method is called while the widget is the
-*current widget*; any widgets instantiated inside it will automatically
+When subclassing an Element to create a compound element (i.e. a element
+that contains other elements), initialize the child elements inside the
+``init()`` method. That method is called while the element is the
+*current element*; any elements instantiated inside it will automatically
 become children.
 
 .. UIExample:: 100
 
-    from flexx import flx
+    from flexx import element as e
 
-    class Example(flx.Widget):
-        def init(self):
-            super().init()
-            
-            flx.Button(text='foo')
-            flx.Button(text='bar')
+    class Example(e.Element):
+        def init(self):  # at this point a self.container_id as been initialized
+            tag, text, line, widget, stag = self.container_id.ttlws()  # syntax borrowed from yattag
+            fill_my_container(self.container_id)  # call a sub to fill a fist part
+            with tag("div") as d:
+                self.button_container = d     # keep a reference on the container
+                self.button1 = widget(e.Button(text='swap'))  # keep a reference on the button
+                widget(e.Button(text='bar'))
+                
+        @flx.reaction('button1.pointer_click')
+        def _button_clicked(self, *events):
+            ev = events[-1]
+            old_container = self.button_container.container
+            self.button_container.container = e.Container()
+            tag, text, line, widget, stag = self.button_container.container.ttlws() 
+            for elem in reverse(old_container):
+                self.button_container.container.append(elem)
+            text("Buttons have swapped")
+    
+    ... At return of the reaction function, it is expected that the DOM be synchronized with the modified container. May have 
+        to do a set_container_id for a event to be generated? Will see...
+        
 
-
-One can also use a widget as a context manager (i.e. using the ``with``
-statement) to create child widgets. This is particularly useful for
-layout widgets (like ``HBox``).
+One can also use a element as a context manager (i.e. using the ``with``
+statement) to create child elements. This is particularly useful for
+layout elements (like ``HBox``).
 
 .. UIExample:: 100
 
-    from flexx import flx
+    from flexx import element as e
 
-    class Example(flx.Widget):
+    class Example(e.Element):
         def init(self):
             super().init()
             
@@ -36,13 +51,13 @@ layout widgets (like ``HBox``).
                 flx.Button(flex=2, text='bar')
 
 In the above two examples, the newly created classes subclass from
-``Widget`` and are thus a ``JsComponent`` (i.e. operate in JS). This
+``Element`` and are thus a ``JsComponent`` (i.e. operate in JS). This
 may be what you want if you are aiming for a UI that can be exported
 for the web. If, however, you are developing a desktop application,
-consider subclassing from ``PyWidget`` instead, which will make your
-widget operate in Python.
+consider subclassing from ``PyElement`` instead, which will make your
+element operate in Python.
 
-It is also possible to create custom low-level widgets by implementing
+It is also possible to create custom low-level elements by implementing
 ``_render_dom()``, resulting in a declarative "react-like" (but less
 Pythonic) approach. It returns a virtual DOM that is used to update/replace
 the real browser DOM.
@@ -51,7 +66,7 @@ the real browser DOM.
 
     from flexx import flx
     
-    class Example(flx.Widget):
+    class Example(e.Element):
         
         count = flx.IntProp()
         
@@ -80,7 +95,7 @@ from .. import event, app
 
 from . import logger  # noqa
 
-class HTML_str(app.JsComponent): # this should be HTML_str(str) but pscript won't allow it (future feature?)
+class HTML_str(): # this should be HTML_str(str) but pscript won't allow it (future feature?)
     def __init__(self, string):
         self.string = string
     def __str__(self):
@@ -91,9 +106,9 @@ class HTML_str(app.JsComponent): # this should be HTML_str(str) but pscript won'
 
 def create_element(type, props=None, *children):
     """ Convenience function to create a dictionary to represent
-    a virtual DOM node. Intended for use inside ``Widget._render_dom()``.
+    a virtual DOM node. Intended for use inside ``Element._render_dom()``.
 
-    The content of the widget may be given as a series/list of child nodes
+    The content of the element may be given as a series/list of child nodes
     (virtual or real), and strings. Strings are converted to text nodes. To
     insert raw HTML, convert your html string to the ``HTML_str`` type, but be 
     careful not to include user-defined text, as this may introduce openings 
@@ -111,31 +126,65 @@ def create_element(type, props=None, *children):
                 children=children,
                 )
 
+# class Container(event.ListProp):
+#     """ A container of elements that contains objects to build the underlaying html.
+#     """ 
+#     class Tag(JsElemComponent):
+#         
+#         def _append(self, item):
+#             self.doc._mutate_items([item], 'insert', len(self.items))
+#         
+#         def __init__(self, doc, name, attrs): # name is the tag name (ex: 'div')
+#             # type: (SimpleDoc, str, Dict[str, Union[str, int, float]]) -> None
+# 
+#             self.doc = doc
+#             self.name = name
+#             self.attrs = attrs
+# 
+#         def __enter__(self):
+#             # type: () -> None
+#             self.parent_tag = None # unknown at this level, filled when ...
+#             self.doc.current_tag = self
+#             self.position = len(self)
+#             self.doc._append(self)
+# 
+#         def __exit__(self, tpe, value, traceback):
+#             # type: (Any, Any, Any) -> None
+#             if value is None:
+#                 if self.attrs:
+#                     self.doc.result[self.position] = "<%s %s>" % (
+#                         self.name,
+#                         dict_to_attrs(self.attrs),
+#                     )
+#                 else:
+#                     self.doc.result[self.position] = "<%s>" % self.name
+#                 self.doc._append("</%s>" % self.name)
+#                 self.doc.current_tag = self.parent_tag
 
-class Widget(app.JsComponent):
-    """ Base widget class (a :class:`Component <flexx.event.Component>` in JS wrapping
+class Element(app.JsComponent):
+    """ Base element class (a :class:`Component <flexx.event.Component>` in JS wrapping
     an `HTML element <https://developer.mozilla.org/docs/Web/HTML/Element>`_).
     
-    When subclassing a Widget, it is recommended to not implement the
+    When subclassing an Element, it is recommended to not implement the
     ``__init__()`` method, but instead implement ``init()`` for compound
-    (higher-level) widgets, and ``_create_dom()`` for low-level widgets.
+    (higher-level) elements, and ``_create_dom()`` for low-level elements.
     
     Widgets can be styled using `CSS <https://developer.mozilla.org/docs/Web/CSS>`_
     by implementing a string class attribute named ``CSS``.
-    A widget's node has a CSS-class-name corresponding to its Python class
+    A element's node has a CSS-class-name corresponding to its Python class
     (and its base classes), following the scheme ``flx-WidgetClassName``.
     
-    All widgets have a ``node`` and ``outernode`` attribute (only accessible
+    All elements have a ``node`` and ``outernode`` attribute (only accessible
     in JavaScript), representing the 
     `DOM element(s) <https://developer.mozilla.org/docs/Web/HTML/Element>`_
-    that represent the widget. For most types of widgets, ``node`` is
-    equal to ``outernode``. For the ``Widget`` class, this is simply a
+    that represent the element. For most types of elements, ``node`` is
+    equal to ``outernode``. For the ``Element`` class, this is simply a
     `<div> <https://developer.mozilla.org/docs/Web/HTML/Element/div>`_
     element. If you don't understand what this is about, don't worry;
-    you won't need it unless you are creating your own low-level widgets.
+    you won't need it unless you are creating your own low-level elements.
     See ``_create_dom()`` for details.
     
-    When implementing your own widget class, the class attribute
+    When implementing your own element class, the class attribute
     ``DEFAULT_MIN_SIZE`` can be set to specify a sensible minimum size.
     
     """
@@ -144,14 +193,14 @@ class Widget(app.JsComponent):
 
     CSS = """
 
-    .flx-Widget {
+    .flx-Element {
         box-sizing: border-box;
         overflow: hidden;
         position: relative;  /* helps with absolute positioning of content */
     }
 
-    /* Main widget to fill the whole page */
-    .flx-main-widget {
+    /* Main element to fill the whole page */
+    .flx-main-element {
        position: absolute;
        left: 0;
        right: 0;
@@ -162,43 +211,40 @@ class Widget(app.JsComponent):
     }
 
     /* to position children absolute */
-    .flx-abs-children > .flx-Widget {
+    .flx-abs-children > .flx-Element {
         position: absolute;
     }
 
-    /* Fix issue flexbox > Widget > layout on Chrome */
-    .flx-Widget:not(.flx-Layout) > .flx-Layout {
+    /* Fix issue flexbox > Element > layout on Chrome */
+    .flx-Element:not(.flx-Layout) > .flx-Layout {
         position: absolute;
     }
     """
 
     ## Properties
 
-    container = event.StringProp('', settable=True, doc="""
-        The id of the DOM element that contains this widget if
-        parent is None. Use 'body' to make this widget the root.
+    container_id = event.StringProp('', settable=True, doc="""
+        The id of the DOM element that contains this element if
+        parent is None. Use 'body' to make this element the root.
         """)
 
     parent = event.ComponentProp(None, doc="""
-        The parent widget, or None if it has no parent. Setting
+        The parent element, or None if it has no parent. Setting
         this property will update the "children" property of the
         old and new parent.
         """)
 
-    children = app.LocalProperty((), doc="""
-        The child widgets of this widget. This property is not settable and
-        only present in JavaScript.
-        """)
-
+    ## Extra Properties to be moved
+    
     title = event.StringProp('', settable=True, doc="""
-        The string title of this widget. This is used to mark
-        the widget in e.g. a tab layout or form layout, and is used
-        as the app's title if this is the main widget.
+        The string title of this element. This is used to mark
+        the element in e.g. a tab layout or form layout, and is used
+        as the app's title if this is the main element.
         """)
 
     icon = app.LocalProperty('', settable=False, doc="""
-        The icon for this widget. This is used is some widgets classes,
-        and is used as the app's icon if this is the main widget.
+        The icon for this element. This is used is some elements classes,
+        and is used as the app's icon if this is the main element.
         It is settable from Python, but only present in JavaScript.
         """)
 
@@ -206,26 +252,26 @@ class Widget(app.JsComponent):
         The extra CSS class name to asign to the DOM element.
         Spaces can be used to delimit multiple names. Note that the
         DOM element already has a css class-name corresponding to
-        its class (e.g. 'flx-Widget) and all its superclasses.
+        its class (e.g. 'flx-Element) and all its superclasses.
         """)
 
     flex = event.FloatPairProp((0, 0), settable=True, doc="""
-        How much space this widget takes (relative to the other
-        widgets) when contained in a flexible layout such as HBox,
+        How much space this element takes (relative to the other
+        elements) when contained in a flexible layout such as HBox,
         HFix, HSplit or FormLayout. A flex of 0 means to take
         the minimum size. Flex is a two-element tuple, but both values
         can be specified at once by specifying a scalar.
         """)
 
     size = event.FloatPairProp((0, 0), settable=False, doc="""
-        The actual size of the widget (readonly). Flexx tries to keep
+        The actual size of the element (readonly). Flexx tries to keep
         this value up-to-date, but in e.g. a box layout, a change in a
-        Button's text can change the size of sibling widgets.
+        Button's text can change the size of sibling elements.
         """)
 
     minsize = event.FloatPairProp((0, 0), settable=True, doc="""
-        The user-defined minimum size (width, height) of this widget in pixels.
-        The default value differs per widget (``Widget.DEFAULT_MIN_SIZE``).
+        The user-defined minimum size (width, height) of this element in pixels.
+        The default value differs per element (``Element.DEFAULT_MIN_SIZE``).
         Note that using "min-width" or "min-height" in ``apply_style()``.
         (and in the ``style`` kwarg) also set this property. Minimum sizes set
         in CSS are ignored.
@@ -233,19 +279,19 @@ class Widget(app.JsComponent):
 
     minsize_from_children = event.BoolProp(True, settable=True, doc="""
         Whether the children are taken into account to calculate this
-        widget's size constraints. Default True: both the ``minsize``
-        of this widget and the size constraints of its children (plus
-        spacing and padding for layout widgets) are used to calculate
-        the size constraints for this widget.
+        element's size constraints. Default True: both the ``minsize``
+        of this element and the size constraints of its children (plus
+        spacing and padding for layout elements) are used to calculate
+        the size constraints for this element.
 
-        Set to False to prevent the content in this widget to affect
-        the parent's layout, e.g. to allow fully collapsing this widget
-        when the parent is a splitter. If this widget has a lot of
+        Set to False to prevent the content in this element to affect
+        the parent's layout, e.g. to allow fully collapsing this element
+        when the parent is a splitter. If this element has a lot of
         content, you may want to combine with ``style='overflow-y: auto'``.
         """)
 
     maxsize = event.FloatPairProp((1e9, 1e9), settable=True, doc="""
-        The user-defined maximum size (width, height) of this widget in pixels.
+        The user-defined maximum size (width, height) of this element in pixels.
         Note that using "max-width" or "max-height" in ``apply_style()``.
         (and in the ``style`` kwarg) also set this property. Maximum sizes set
         in CSS are ignored.
@@ -258,9 +304,9 @@ class Widget(app.JsComponent):
         """)
 
     tabindex = event.IntProp(-2, settable=True, doc="""
-        The index used to determine widget order when the user
-        iterates through the widgets using tab. This also determines
-        whether a widget is able to receive key events. Flexx automatically
+        The index used to determine element order when the user
+        iterates through the elements using tab. This also determines
+        whether a element is able to receive key events. Flexx automatically
         sets this property when it should emit key events.
         Effect of possible values on underlying DOM element:
 
@@ -279,15 +325,15 @@ class Widget(app.JsComponent):
         * If 0, the mouse is not captured, and move events are only emitted
           when the mouse is pressed down (not recommended).
         * If 1 (default) the mouse is captured when pressed down, so move
-          and up events are received also when the mouse is outside the widget.
+          and up events are received also when the mouse is outside the element.
         * If 2, move events are also emitted when the mouse is not pressed down
-          and inside the widget.
+          and inside the element.
         """)
 
     @event.action
     def set_icon(self, val):
-        """ Set the icon for this widget. This is used is some widgets classes,
-        and is used as the app's icon if this is the main widget.
+        """ Set the icon for this element. This is used is some elements classes,
+        and is used as the app's icon if this is the main element.
         It is settable from Python, but the property is not available in Python.
 
         Can be a url, a relative url to a shared asset, or a base64
@@ -302,6 +348,9 @@ class Widget(app.JsComponent):
 
     def __init__(self, *init_args, **kwargs):
 
+        # derive type from class name:
+        self.type = self.__class__.__name__
+
         # Handle parent
         try:
             given_parent = parent = kwargs.pop('parent')
@@ -313,7 +362,7 @@ class Widget(app.JsComponent):
         if parent is None:
             active_components = loop.get_active_components()
             for active_component in reversed(active_components):
-                if isinstance(active_component, Widget):
+                if isinstance(active_component, Element):
                     parent = active_component
                     break
         # -> we apply via set_parent below
@@ -336,20 +385,20 @@ class Widget(app.JsComponent):
         # Some further initialization ...
         # Note that the _comp_init_property_values() will get called first.
 
-        # Attach this widget in the widget hierarchy, if we can
+        # Attach this element in the element hierarchy, if we can
         if parent_given is True:
             self.set_parent(given_parent)
         elif parent is not None:
             self.set_parent(parent)
-        elif self.container == '':
-            # Determine whether this should be the main widget. If the browser
-            # seems to need one, and this is the first "orphan" widget to be
-            # instantiated, this widget will take on this role.
+        elif self.container_id == '':
+            # Determine whether this should be the main element. If the browser
+            # seems to need one, and this is the first "orphan" element to be
+            # instantiated, this element will take on this role.
             if window.flexx.need_main_widget:
                 window.flexx.need_main_widget = False
-                self.set_container('body')
+                self.set_container_id('body')
 
-        # Apply widget-specific default minsize if minsize is not given
+        # Apply element-specific default minsize if minsize is not given
         if kwargs.get('minsize', None) is None:
             self.set_minsize(self.DEFAULT_MIN_SIZE)
 
@@ -382,7 +431,7 @@ class Widget(app.JsComponent):
         cls = self.__class__
         for i in range(32):  # i.e. a safe while-loop
             self.outernode.classList.add('flx-' + cls.__name__)
-            if cls is Widget.prototype:
+            if cls is Element.prototype:
                 break
             cls = cls._base_class
         else:
@@ -392,54 +441,51 @@ class Widget(app.JsComponent):
         self._init_events()
 
     def init(self):
-        """ Overload this to initialize a custom widget. It's preferred
+        """ Overload this to initialize a custom element. It's preferred
         to use this instead of ``__init__()``, because it gets called
-        at a better moment in the instantiation of the widget.
+        at a better moment in the instantiation of the element.
         
         This method receives any positional arguments that were passed
-        to the constructor.  When called, this widget is the current parent.
+        to the constructor.  When called, this element is the current parent.
         """
         # The Component class already implement a stub, but we may like a more
         # specific docstring here.
         pass
 
     def _create_dom(self):
-        """ Create DOM node(s) for this widget.
+        """ Create DOM node(s) for this element.
 
         This method must return two (real or virtual) DOM nodes which
         will be available as ``self.outernode`` and ``self.node``
         respectively. If a single node is given, it is used for both
         values. These attributes must remain unchanged throughout the
-        lifetime of a widget. This method can be overloaded in
+        lifetime of a element. This method can be overloaded in
         subclasses.
 
-        Most widgets have the same value for ``node`` and ``outernode``.
+        Most elements have the same value for ``node`` and ``outernode``.
         However, in some cases it helps to distinguish between the
         semantic "actual node" and a wrapper. E.g. Flexx uses it to
         properly layout the ``CanvasWidget`` and ``TreeItem``.
         Internally, Flexx uses the ``node`` attribute for tab-index, and
         binding to mouse/touch/scroll/key events. If your ``outernode``
-        already semantically represents your widget, you should probably
+        already semantically represents your element, you should probably
         just use that.
-        
-        _create_dom cannot be used on PyWidget derived classes, it is
-        called within client Widget JS code. 
         """
         return create_element('div')
 
     def _render_dom(self):
-        """ Update the content of the DOM for this widget.
+        """ Update the content of the DOM for this element.
 
         This method must return a DOM structure consisting of (a mix of)
-        virtual nodes, real nodes and strings. The widget will use this
+        virtual nodes, real nodes and strings. The element will use this
         structure to update the real DOM in a relatively efficient
         manner (new nodes are only (re)created if needed). The root
-        element must match the type of this widget's outernode. This
+        element must match the type of this element's outernode. This
         method may also return a list to apply as the root node's children.
 
         Note that this method is called from an implicit reaction: it will
         auto-connect to any properties that are accessed. Combined with the
-        above, this allows for a very declarative way to write widgets.
+        above, this allows for a very declarative way to write elements.
 
         Virtual nodes are represented as dicts with fields "type", "props"
         and "children". Children is a list consisting of real dom nodes,
@@ -447,24 +493,22 @@ class Widget(app.JsComponent):
         The ``create_element()`` function makes it easy to create virtual nodes.
 
         The default ``_render_dom()`` method simply places the outer node of
-        the child widgets as the content of this DOM node, while preserving
-        nodes that do not represent a widget. Overload as needed.
-
-        _render_dom cannot be used on PyWidget derived classes. 
+        the child elements as the content of this DOM node, while preserving
+        nodes that do not represent a element. Overload as needed.
         """
         nodes = []
         for i in range(len(self.outernode.childNodes)):
             node = self.outernode.childNodes[i]
-            if not (node.classList and node.classList.contains('flx-Widget')):
+            if not (node.classList and node.classList.contains('flx-Element')):
                 nodes.push(node)  # push is JS' append
-        for widget in self.children:
-            nodes.push(widget.outernode)
+        for element in self.children:
+            nodes.push(element.outernode)
         return nodes
 
     @event.reaction
     def __render(self):
         # Call render method
-        vnode = self._render_dom()
+        vnode = self._render_dom()  # vnode assigment
         # Validate output, allow it to return content instead of a vnode
         if vnode is None or vnode is self.outernode:
             return
@@ -472,10 +516,10 @@ class Widget(app.JsComponent):
             vnode = dict(type=self.outernode.nodeName, props={}, children=vnode)
         elif isinstance(vnode, dict):
             if vnode.type.toLowerCase() != self.outernode.nodeName.toLowerCase():
-                raise ValueError('Widget._render_dom() must return root node with '
+                raise ValueError('Element._render_dom() must return root node with '
                                  'same element type as outernode.')
         else:
-            raise TypeError('Widget._render_dom() '
+            raise TypeError('Element._render_dom() '
                             'must return None, list or dict.')
         # Resolve
         node = self.__render_resolve(vnode, self.outernode)
@@ -490,28 +534,27 @@ class Widget(app.JsComponent):
         node: This is the anchor node, if node is None the vnode is a 
               children of the anchor node.
         """
-        print(f"vnode: {vnode}, node: {node}")
 
         # Check vnode (we check vnode.children further down)
         if vnode and vnode.nodeName:  # is DOM node
             return vnode
         elif isinstance(vnode, HTML_str):
              elem = window.document.createElement('span')
-             elem.innerHTML = vnode.string
+             elem.innerHTML = vnode
              elem.className = "raw_html";
              return elem
         elif isinstance(vnode, str):
             return window.document.createTextNode(vnode)
         elif not isinstance(vnode, dict):
-            raise TypeError('Widget._render_dom() needs virtual nodes '
+            raise TypeError('Element._render_dom() needs virtual nodes '
                             'to be dicts, not ' + vnode)
-        # at this point vnode is a dict
-        print(f"vnode as dict: {vnode.values()}")
-        if not isinstance(vnode.type, str):
-            raise TypeError('Widget._render_dom() needs virtual node '
+            
+        ### After all above ifs and elifs the vnode is a dict:
+        if not isinstance(vnode.type, str): # the 'type' dict definition must be str
+            raise TypeError('Element._render_dom() needs virtual node '
                             'type to be str, not ' + vnode.type)
         if not isinstance(vnode.props, dict):
-            raise TypeError('Widget._render_dom() needs virtual node '
+            raise TypeError('Element._render_dom() needs virtual node '
                             'props as dict, not ' + vnode.props)
 
         # Resolve the node itself, create the anchor node if it does not exist
@@ -555,7 +598,7 @@ class Widget(app.JsComponent):
                     node.removeChild(subnode)
         else:
             window.flexx_vnode = vnode
-            raise TypeError('Widget._render_dom() '
+            raise TypeError('Element._render_dom() '
                             'needs virtual node children to be None or list, not %s' %
                             vnode.children)
 
@@ -564,23 +607,23 @@ class Widget(app.JsComponent):
     # Note that this method is only present at the Python side
     # (because the JsComponent meta class makes it so).
     def _repr_html_(self):
-        """ This is to get the widget shown inline in the notebook.
+        """ This is to get the element shown inline in the notebook.
         """
-        if self.container:
-            return "<i>Th widget %s is already shown in this notebook</i>" % self.id
+        if self.container_id:
+            return "<i>Th element %s is already shown in this notebook</i>" % self.id
 
         container_id = self.id + '_container'
-        self.set_container(container_id)
+        self.set_container_id(container_id)
         return "<div class='flx-container' id='%s' />" % container_id
 
     def dispose(self):
-        """ Overloaded version of dispose() that disposes any child widgets.
+        """ Overloaded version of dispose() that disposes any child elements.
         """
-        # Dispose children? Yes, each widget can have exactly one parent and
+        # Dispose children? Yes, each element can have exactly one parent and
         # when that parent is disposed, it makes sense to assume that the
         # child ought to be disposed as well. It avoids memory leaks. If a
         # child is not supposed to be disposed, the developer should orphan the
-        # child widget.
+        # child element.
         children = self.children
         # First dispose children (so they wont send messages back), then clear
         # the children and dispose ourselves.
@@ -595,7 +638,7 @@ class Widget(app.JsComponent):
 
     @event.action
     def apply_style(self, style):
-        """ Apply CSS style to this widget object. e.g.
+        """ Apply CSS style to this element object. e.g.
         ``"background: #f00; color: #0f0;"``. If the given value is a
         dict, its key-value pairs are converted to a CSS style string.
 
@@ -663,12 +706,12 @@ class Widget(app.JsComponent):
 
     @event.reaction('title')
     def __title_changed(self, *events):
-        if self.parent is None and self.container == 'body':
+        if self.parent is None and self.container_id == 'body':
             window.document.title = self.title or 'Flexx app'
 
     @event.reaction('icon')
     def __icon_changed(self, *events):
-        if self.parent is None and self.container == 'body':
+        if self.parent is None and self.container_id == 'body':
             window.document.title = self.title or 'Flexx app'
 
             link = window.document.createElement('link')
@@ -682,7 +725,7 @@ class Widget(app.JsComponent):
 
     @event.reaction
     def __update_tabindex(self, *events):
-        # Note that this also makes the widget able to get focus, and thus
+        # Note that this also makes the element able to get focus, and thus
         # able to do key events.
         ti = self.tabindex
         if ti < -1:
@@ -759,8 +802,8 @@ class Widget(app.JsComponent):
     @event.action
     def check_real_size(self):
         """ Check whether the current size has changed. It should usually not
-        be necessary to invoke this action, since a widget does so by itself,
-        but it some situations the widget may not be aware of possible size
+        be necessary to invoke this action, since a element does so by itself,
+        but it some situations the element may not be aware of possible size
         changes.
         """
         n = self.outernode
@@ -768,7 +811,7 @@ class Widget(app.JsComponent):
         if cursize[0] != n.clientWidth or cursize[1] != n.clientHeight:
             self._mutate_size([n.clientWidth, n.clientHeight])
 
-    @event.reaction('container', 'parent.size', 'children')
+    @event.reaction('container_id', 'parent.size', 'children')
     def __size_may_have_changed(self, *events):
         # Invoke actions, i.e. check size in *next* event loop iter to
         # give the DOM a chance to settle.
@@ -792,7 +835,7 @@ class Widget(app.JsComponent):
 
     @event.action
     def set_parent(self, parent, pos=None):
-        """ Set the parent widget (can be None). This action also mutates the
+        """ Set the parent element (can be None). This action also mutates the
         childen of the old and new parent.
         """
         old_parent = self.parent  # or None
@@ -801,8 +844,8 @@ class Widget(app.JsComponent):
         # Early exit
         if new_parent is old_parent and pos is None:
             return
-        if not (new_parent is None or isinstance(new_parent, Widget)):
-            raise ValueError('%s.parent must be a Widget or None' % self.id)
+        if not (new_parent is None or isinstance(new_parent, Element)):
+            raise ValueError('%s.parent must be an Element or None' % self.id)
 
         # Apply parent
         self._mutate_parent(new_parent)
@@ -837,21 +880,21 @@ class Widget(app.JsComponent):
                 children.push(self)
             new_parent._mutate_children(children)
 
-    @event.reaction('container')
+    @event.reaction('container_id')
     def __container_changed(self, *events):
-        id = self.container
-        self.outernode.classList.remove('flx-main-widget')
+        id = self.container_id
+        self.outernode.classList.remove('flx-main-element')
         if self.parent:
             return
 
         # Let session keep us up to date about size changes
-        # (or make it stop if we dont have a container anymore)
+        # (or make it stop if we dont have a container_id anymore)
         self._session.keep_checking_size_of(self, bool(id))
 
         if id:
             if id == 'body':
                 el = window.document.body
-                self.outernode.classList.add('flx-main-widget')
+                self.outernode.classList.add('flx-main-element')
                 window.document.title = self.title or 'Flexx app'
             else:
                 el = window.document.getElementById(id)
@@ -860,8 +903,8 @@ class Widget(app.JsComponent):
                     return
             el.appendChild(self.outernode)
 
-    def _release_child(self, widget):
-        """ Overload to restore a child widget, e.g. to its normal style.
+    def _release_child(self, element):
+        """ Overload to restore a child element, e.g. to its normal style.
         """
         pass
 
@@ -896,14 +939,14 @@ class Widget(app.JsComponent):
         self._addEventListener(self.node, 'touchcancel', self.pointer_cancel, 0)
 
         # Implement mouse capturing. When a mouse is pressed down on
-        # a widget, it "captures" the mouse, and will continue to receive
-        # move and up events, even if the mouse is not over the widget.
+        # a element, it "captures" the mouse, and will continue to receive
+        # move and up events, even if the mouse is not over the element.
 
         self._capture_flag = 0
         # 0: mouse not down, 1: mouse down (no capture), 2: captured, -1: capture end
 
         def mdown(e):
-            # Start emitting move events, maybe follow the mouse outside widget bounds
+            # Start emitting move events, maybe follow the mouse outside element bounds
             if self.capture_mouse == 0:
                 self._capture_flag = 1
             else:
@@ -968,7 +1011,7 @@ class Widget(app.JsComponent):
 
         All pointer events have the following attributes:
 
-        * pos: the pointer position, in pixels, relative to this widget
+        * pos: the pointer position, in pixels, relative to this element
         * page_pos: the pointer position relative to the page
         * button: what mouse button the event is about, 1, 2, 3 are left, right,
             middle, respectively. 0 indicates no button.
@@ -1041,7 +1084,7 @@ class Widget(app.JsComponent):
         * hscroll: amount of scrolling in horizontal direction
         * vscroll: amount of scrolling in vertical direction
         """
-        # Note: wheel event gets generated also for parent widgets
+        # Note: wheel event gets generated also for parent elements
         # I think this makes sense, but there might be cases
         # where we want to prevent propagation.
         ev = self._create_pointer_event(e)
@@ -1100,7 +1143,7 @@ class Widget(app.JsComponent):
     @event.emitter
     def key_down(self, e):
         """ Event emitted when a key is pressed down while this
-        widget has focus. A key event has the following attributes:
+        element has focus. A key event has the following attributes:
 
         * key: the character corresponding to the key being pressed, or
             a key name like "Escape", "Alt", "Enter".
@@ -1126,7 +1169,7 @@ class Widget(app.JsComponent):
     @event.emitter
     def key_up(self, e):
         """ Event emitted when a key is released while
-        this widget has focus. See key_down for details.
+        this element has focus. See key_down for details.
         """
         return self._create_key_event(e)
 
@@ -1160,28 +1203,28 @@ class Widget(app.JsComponent):
         return dict(key=key, modifiers=modifiers)
 
 
-class PyWidget(app.PyComponent):
-    """ A base class that can be used to create compound widgets that
+class PyElement(app.PyComponent):
+    """ A base class that can be used to create compound elements that
     operate in Python. This enables an approach for building GUI's in
-    a Pythonic way: by only *using* JS components (actual widgets) all
+    a Pythonic way: by only *using* JS components (actual elements) all
     code that you *write* can be Python code.
 
-    Internally, objects of this class create a sub-widget (a
-    ``flx.Widget`` instance). When the object is used as a context
-    manager, the sub-widget will also become active. Further, this class
-    gets attributes for all the sub-widget's properties, actions, and
+    Internally, objects of this class create a sub-element (a
+    ``e.Element`` instance). When the object is used as a context
+    manager, the sub-element will also become active. Further, this class
+    gets attributes for all the sub-element's properties, actions, and
     emitters. In effect, this class can be used like a normal
-    ``flx.Widget`` (but in Python).
+    ``e.Element`` (but in Python).
     """
 
-    _WidgetCls = Widget
+    _ElementCls = Element
 
     def __init__(self, *args, **kwargs):
-        self._jswidget = None
+        self._jselement = None
         super().__init__(*args, **kwargs)
 
     def _comp_init_property_values(self, property_values):
-        # This is a good place to hook up our sub-widget. It gets called
+        # This is a good place to hook up our sub-element. It gets called
         # when this is the active component, and after the original
         # version of this has been called, everything related to session
         # etc. will work fine.
@@ -1190,14 +1233,14 @@ class PyWidget(app.PyComponent):
         kwargs_for_real_widget = {}
         for name in list(property_values.keys()):
             if name not in self.__properties__:
-                if name in self._WidgetCls.__properties__:
+                if name in self._ElementCls.__properties__:
                     kwargs_for_real_widget[name] = property_values.pop(name)
         # Call original version, sets _session, amongst other things
         super()._comp_init_property_values(property_values)
-        # Create widget and activate it
-        w = self._WidgetCls(**kwargs_for_real_widget)
+        # Create element and activate it
+        w = self._ElementCls(**kwargs_for_real_widget)
         self.__exit__(None, None, None)
-        self._jswidget = w
+        self._jselement = w
         self.__enter__()
         # Copy all properties, actions and emitters
         for x in w.__properties__ + w.__actions__ + w.__emitters__:
@@ -1211,11 +1254,11 @@ class PyWidget(app.PyComponent):
 
     def __enter__(self):
         res = super().__enter__()
-        if self._jswidget is not None:
-            self._jswidget.__enter__()
+        if self._jselement is not None:
+            self._jselement.__enter__()
         return res
 
     def __exit__(self, *args, **kwargs):
-        if self._jswidget is not None:
-            self._jswidget.__exit__(None, None, None)
+        if self._jselement is not None:
+            self._jselement.__exit__(None, None, None)
         return super().__exit__(*args, **kwargs)

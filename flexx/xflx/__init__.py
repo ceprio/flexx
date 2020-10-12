@@ -12,9 +12,7 @@ del logging
 # small set of closely related classes). In order not to pollute the
 # namespaces, we prefix the module names with an underscrore.
 
-from ._widget import Widget, PyWidget, create_element, HTML_str
-from .layouts import *
-from .widgets import *
-from .pywidgets import *
-# from .elements import *
-# from .pyelements import *
+from ._element import Element, PyElement, HTML_str
+#from .layouts import *  # todo
+from .elements import *
+#from .pyelements import *  # todo
