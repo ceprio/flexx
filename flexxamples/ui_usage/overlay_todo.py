@@ -1,4 +1,3 @@
-# doc-export: Main
 """
 Simple use of a group,
 using a custom widget that is populated in its ``init()``.

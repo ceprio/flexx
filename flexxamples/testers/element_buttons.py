@@ -1,4 +1,3 @@
-# doc-export: Example
 """
 Example demonstrating three kinds of buttons.
 """
