@@ -106,4 +106,13 @@ class FileInputBase(Widget):
     @event.reaction('accept')
     def accept_changed(self, *events):
         self.input.accept = self.accept
+        
+    @event.action
+    def clear(self):
+        self.input.value = ""
+        self.set_filename("")
+        self.set_filetype("")
+        self.set_filesize(0)
+        self.set_filecontent("")
+        self.message.innerHTML = ""
 
