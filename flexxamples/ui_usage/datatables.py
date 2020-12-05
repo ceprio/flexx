@@ -1,4 +1,3 @@
-# doc-export: DataTableWidgets
 """
 This example demonstrates a table widget based on datatables (see datatables.js). 
 """

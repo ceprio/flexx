@@ -490,7 +490,7 @@ class Widget(app.JsComponent):
         node: This is the anchor node, if node is None the vnode is a 
               children of the anchor node.
         """
-        print(f"vnode: {vnode}, node: {node}")
+        #print(f"vnode: {vnode}, node: {node}")
 
         # Check vnode (we check vnode.children further down)
         if vnode and vnode.nodeName:  # is DOM node
@@ -506,7 +506,7 @@ class Widget(app.JsComponent):
             raise TypeError('Widget._render_dom() needs virtual nodes '
                             'to be dicts, not ' + vnode)
         # at this point vnode is a dict
-        print(f"vnode as dict: {vnode.values()}")
+        #print(f"vnode as dict: {vnode.values()}")
         if not isinstance(vnode.type, str):
             raise TypeError('Widget._render_dom() needs virtual node '
                             'type to be str, not ' + vnode.type)

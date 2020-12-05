@@ -1,4 +1,3 @@
-# doc-export: Main
 """
 Simple use of a TagWidget,
 """

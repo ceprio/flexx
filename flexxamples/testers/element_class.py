@@ -1,8 +1,5 @@
 from flexx import flx
 
-
-
-
 class Example(flx.Widget):
     def init(self):
         with flx.HBox() as self._container:
