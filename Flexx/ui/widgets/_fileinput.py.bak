@@ -17,7 +17,7 @@ from .._widget import Widget, create_element
 
 
 class FileInputBase(Widget):
-    """ Abstract button class.
+    """ Fileinput base class for file input selection.
     
     The html structure of this Widget is the following:
     <input name="file1" type="file", accept="image/png, image/jpeg">

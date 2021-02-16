@@ -23,8 +23,8 @@ from ._plotwidget import PlotWidget
 from ._plotly import PlotlyWidget
 from ._bokeh import BokehWidget
 from ._datatables import DataTableWidget
-from ._fileinput import FileInputBase
+from ._fileinput import FileInputBase, FileInput
 from ._markdown import Markdown
-from ._htmlcontent import HTMLContent
+from ._div import Div
 from ._tag import TagWidget
 

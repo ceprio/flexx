@@ -6,6 +6,7 @@ class Example(flx.Widget):
         with flx.HBox() as self._container:
             self.but = flx.Button(text='add')
             flx.Widget(minsize=10)  # seperator
+#         self.but = None
 
     @flx.reaction("but.pointer_click")
     def add_widgets(self, *events):
@@ -15,14 +16,16 @@ class Example(flx.Widget):
         #     flx.Button("stub")
         # For sake of example, you can create a new widget under *any* context,
         # and then move it somewhere else.
-        with self:
-            self.but2 = flx.Button(text="remove")
-        self.but2.set_parent(self._container)
+        if self.but is not None:
+            with self:
+                self.but = flx.Button(text="remove")
+            self.but.set_parent(self._container)
 
-#     @flx.reaction("!but2.pointer_click")  ### use create reaction instead
-#     def remove_widgets(self, *events):
-#         self.but2.set_parent(None)
-#         self.but2.dispose()
+    @flx.reaction("but.pointer_click")  ### use create reaction instead
+    def remove_widget(self, *events):
+        self.but.set_parent(None)
+        self.but.dispose()
+        self.but = None
         
 flx.launch(Example)
 flx.run()

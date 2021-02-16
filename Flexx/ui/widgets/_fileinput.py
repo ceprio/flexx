@@ -1,11 +1,22 @@
-# based on https://www.webcodegeeks.com/html5/html5-file-upload-example/
+"""
 
-from flexx import flx, event, ui
-from flexx.ui._widget import Widget, create_element
+Simple example:
+
+.. UIExample:: 70
+
+    def init(self):
+        self.input = flx.FileInput(accept="image/png, image/jpeg")
+        self.img = Image()
+
+Also see example: :ref:`fileinput_to_pywidget.py`.
+
+"""
+from ... import event
+from .._widget import Widget, create_element
 
 
-class FileInput(Widget):
-    """ Abstract button class.
+class FileInputBase(Widget):
+    """ Fileinput base class for file input selection.
     
     The html structure of this Widget is the following:
     <input name="file1" type="file", accept="image/png, image/jpeg">
@@ -13,6 +24,7 @@ class FileInput(Widget):
     accept can be:
     image: "image/png, image/jpeg"
     excel sheet: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+    multiple types: ".doc,.docx,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
     """
 
     DEFAULT_MIN_SIZE = 10, 24
@@ -50,6 +62,11 @@ class FileInput(Widget):
         The content of the file in byte64 format.
         """)
 
+    accept = event.StringProp('', settable=True, doc="""
+        Accepted file types.
+        """)
+
+
     def _init_events():
         pass  # just don't use standard events
 
@@ -59,7 +76,7 @@ class FileInput(Widget):
         self.input = window.document.createElement('input')
         self.input.id = self.id + ".0"
         self.input.type = "file"
-        self.input.accept = "image/png, image/jpeg"
+        #self.input.accept = ".doc,.docx,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
         self.message = window.document.createElement('div')
         self.message.id = self.id + ".1"
         outer.appendChild(self.input)
@@ -86,39 +103,18 @@ class FileInput(Widget):
             reader.readAsDataURL(file)
         return dict(orange="black")
 
+    @event.reaction('accept')
+    def accept_changed(self, *events):
+        self.input.accept = self.accept
+        
+    @event.action
+    def clear(self):
+        self.input.value = ""
+        self.set_filename("")
+        self.set_filetype("")
+        self.set_filesize(0)
+        self.set_filecontent("")
+        self.message.innerHTML = ""
 
-class Image(flx.Widget):
-    DEFAULT_MIN_SIZE = 10, 24
-    
-    source = event.StringProp('', settable=True, doc="""
-        The image src.
-        """)
-    
-    def _init_events():
-        pass  # just don't use standard events
-
-    def _create_dom(self):
-        global window
-        outer = window.document.createElement('img')
-        return outer
-    
-    @event.reaction('source')
-    def __source_changed(self, *events):
-        if "allow_reconnect" not in events[0]: # skip the first one
-            self.node.src = self.source
-
-
-class Example(flx.PyWidget):
-
-    def init(self):
-        self.input = FileInput()
-        self.img = Image()
-
-    @event.reaction('input.filecontent')
-    def __source_changed(self, *events):
-        if "allow_reconnect" not in events[0]: # skip the first one
-            self.img.set_source(self.input.filecontent)
-
-if __name__ == '__main__':
-    m = flx.launch(Example, 'default-browser')
-    flx.start()
+class FileInput(FileInputBase):
+    pass

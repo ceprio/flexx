@@ -4,15 +4,13 @@ Simple example:
 
 .. UIExample:: 200
 
-    # Define data. This can also be generated with the plotly Python library
-    data = [{'type': 'bar',
-             'x': ['giraffes', 'orangutans', 'monkeys'],
-             'y': [20, 14, 23]}]
+    def init(self):
+        content = "# Welcome\n\n" \
+            "Hello.  Welcome to my **website**. This is an example of a widget container for markdown content. " \
+            "The content can be text or a link.\n\n"
+        ui.Markdown(content=content, style='background:#EAECFF;height:60%;')
 
-    # Show
-    p = ui.PlotlyWidget(data=data)
-
-Also see examples: :ref:`plotly_gdp.py`.
+Also see example: :ref:`ui_usage/markdown.py`.
 
 """
 
@@ -24,6 +22,13 @@ app.assets.associate_asset(__name__, 'https://cdnjs.cloudflare.com/ajax/libs/sho
 
 class Markdown(Widget):
     """ A widget that shows a rendered Markdown content.
+    """
+    CSS = """
+
+    .flx-Markdown {
+        height: min(100vh,100%);
+        overflow-y: auto;
+    }
     """
 
     content = event.StringProp(settable=True, doc="""
