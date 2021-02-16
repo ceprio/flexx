@@ -14,6 +14,8 @@ Simple usage:
             "The content can be text or a link.\n\n"
         ui.Markdown(content=content, style='background:#EAECFF;height:60%;')
 
+Also see example: :ref:`ui_usage/markdown.py`.
+
 """
 
 from ... import app, event
